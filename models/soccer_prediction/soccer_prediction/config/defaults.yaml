@@ -1,0 +1,42 @@
+api_football:
+  api_key: ""
+  host: "v3.football.api-sports.io"
+cache:
+  dir: ".cache/soccer_prediction"
+  ttl_hours: 24
+rate_limits:
+  api_football: 100
+  football_data_csv: 0
+  worldcup_open: 0
+  statsbomb: 0
+model:
+  time_decay_xi: 0.0039
+  recency_window_days: 730
+  max_goals: 8
+  scenario_simulations: 20000
+  random_seed: 2026
+  opponent_network_depth: 1
+  opponent_network_max_teams: 12
+  morale_decay_xi: 0.0077
+  morale_max_effect: 0.08
+  # Bayesian prior weight for attack/defence shrinkage (lower = more form-responsive).
+  rate_prior_weight: 4.0
+  # When facing another strong side, mildly regress ultra-tight defence factors
+  # toward 1 via defence_weakness ** elite_defence_exponent (1.0 = off).
+  # Kept gentle after Spain 2-0 France: that game was low-scoring, not open.
+  elite_defence_exponent: 0.85
+  # Small total-goals scale for strong-vs-strong meetings (0 = off).
+  elite_tempo_strength: 0.08
+  # Attack/defence rating estimator: "mle" (regularized Poisson maximum
+  # likelihood, propagated across the opponent graph) or "heuristic" (legacy).
+  network_rating_method: "mle"
+  # Distrust thinly-connected teams: shrink their network attack/defence toward
+  # 1.0 by effective match weight (0 = never shrink, higher = more caution).
+  network_confidence_prior: 2.0
+  # Blend a transitive shared-opponent margin (A beat X, X beat B => A favored)
+  # into goal expectations; max weight, fades in for thin/indirect data (0 = off).
+  shared_opponent_weight: 0.15
+  # Discount per extra hop so long/weak connection chains count for less.
+  shared_opponent_hop_decay: 0.5
+  # Longest connection chain (edges) searched between the two teams.
+  shared_opponent_max_hops: 3
