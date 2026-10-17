@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load static %}
+{% block css_files %}
+<link rel="stylesheet" href="{% static 'blog/css/style.css' %}">
+{% endblock %}
+{% block content %}
+<div class="form-container">
+    {% if home_score is not None and away_score is not None %}
+    <div class="result-container">
+        <h3>⚽ Tahmin Sonucu</h3>
+        <p><strong>Ev Sahibi Skor:</strong> {{ home_score }}</p>
+        <p><strong>Deplasman Skor:</strong> {{ away_score }}</p>
+    </div>
+    {% endif %}
+<form method="POST" action="{% url 'predict' %}" id="prediction-form">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="region">Lig</label>
+        <input type="text" name="region" id="region" class="form-control" placeholder="Premier League, Serie A..."value="{{ request.POST.region }}">
+    </div>
+    <div class="form-group">
+        <label for="year">Yıl</label>
+        <input type="number" name="year" id="year" class="form-control" value="{{ request.POST.year }}">
+    </div>
+    <div class="form-group">
+        <label for="home_team">Ev Sahibi Takım</label>
+        <input type="text" name="home_team" id="home_team" class="form-control" value="{{ request.POST.home_team }}">
+    </div>
+    <div class="form-group">
+        <label for="away_team">Deplasman Takım</label>
+        <input type="text" name="away_team" id="away_team" class="form-control" value="{{ request.POST.away_team }}">
+    </div>
+    <div class="form-group">
+        <label for="xg1">XG1 (Ev Sahibi için)</label>
+        <input type="text" name="xg1" id="xg1" class="form-control"value="{{ request.POST.xg1 }}">
+    </div>
+    <div class="form-group">
+        <label for="xg2">XG2 (Deplasman için)</label>
+        <input type="text" name="xg2" id="xg2" class="form-control" value="{{ request.POST.xg2 }}">
+    </div>
+    <div class="form-group">
+        <label for="attendance">Seyirci</label>
+        <input type="number" name="attendance" id="attendance" class="form-control" value="{{ request.POST.attendance }}">
+    </div>
+    <div class="form-group">
+        <label for="venue">Stadyum</label>
+        <input type="text" name="venue" id="venue" class="form-control" value="{{ request.POST.venue }}">
+    </div>
+    <div class="form-group">
+        <label for="referee">Hakem</label>
+        <input type="text" name="referee" id="referee" class="form-control" value="{{ request.POST.referee }}">
+    </div>
+    <button type="submit" class="submit-btn" id="submit-btn">Tahmin Et</button>
+    <button type="button" class="clear-btn" onclick="clearForm()">Temizle</button>
+</form>
+</div>
+{% endblock %}
+<script>
+    function clearForm() {
+        // Sayfayı yeniden yükleyerek hem formu hem sonucu sıfırla
+        window.location.href = window.location.pathname;
+    }
+</script>
