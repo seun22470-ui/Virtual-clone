@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bookieskit"
+version = "0.16.0"
+description = "Async HTTP clients for scraping odds from 7 African sportsbooks (BetPawa, SportyBet, Bet9ja, Betway, MSport, SportPesa, Betika) with cross-bookmaker normalization via SportRadar IDs."
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.5",
+]
+orchestration = [
+    "pyjwt[crypto]>=2.8",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# Put the repo root on sys.path so cross-module test imports (e.g.
+# `from tests.test_parser_betway import ...`) resolve under the bare `pytest`
+# entrypoint used in CI, not just under `python -m pytest` (which adds cwd).
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]

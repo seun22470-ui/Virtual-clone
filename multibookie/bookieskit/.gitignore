@@ -1,0 +1,43 @@
+*$py.class
+*.csv
+*.egg
+*.egg-info/
+*.py[cod]
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+build/
+dist/
+venv/
+
+.claude/
+sportpesa_cookie.txt
+probe_sportpesa.py
+capture_now.py
+probe_gaps.py
+app_bundle.js
+sp_routes.json
+betika_home.html
+betika_init.js
+.playwright-mcp/
+.mcp.json
+.orchestrator/
+
+# graphify structural graph (slice C): commit only the reviewable artifacts;
+# the HTML/cache/labels/root marker are large or local-path-bearing -> ignore.
+src/graphify-out/*
+!src/graphify-out/graph.json
+!src/graphify-out/GRAPH_REPORT.md
+
+# `graphify update src` also drops an incremental-rebuild cache at the repo
+# root. It is keyed by ABSOLUTE local paths, so it must never be committed.
+/graphify-out/
+
+# one-shot scratch scripts and raw audit/monitor dumps (see docs/audits/README.md:
+# only the rendered .md reports are committed)
+/_*.py
+/_*.json
+docs/audits/*.json
+scripts/*.sqlite

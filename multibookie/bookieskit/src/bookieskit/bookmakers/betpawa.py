@@ -1,0 +1,213 @@
+"""BetPawa client — supports all 15 of BetPawa's advertised countries."""
+
+import json
+from typing import Any
+from urllib.parse import quote
+
+from bookieskit.base import BaseBookmaker
+from bookieskit.config import BETPAWA_MAX_CONCURRENT, BETPAWA_REQUEST_DELAY
+
+# Country code to x-pawa-brand header value. Each entry pairs with a
+# DOMAINS row; both must move together when adding a new country.
+_BRAND_MAP = {
+    "ng": "betpawa-nigeria",
+    "gh": "betpawa-ghana",
+    "ke": "betpawa-kenya",
+    "ug": "betpawa-uganda",
+    "tz": "betpawa-tanzania",
+    "zm": "betpawa-zambia",
+    "rw": "betpawa-rwanda",
+    "cm": "betpawa-cameroon",
+    "sl": "betpawa-sierraleone",
+    "bj": "betpawa-benin",
+    "cg": "betpawa-congobrazzaville",
+    "cd": "betpawa-drc",
+    "ls": "betpawa-lesotho",
+    "mw": "betpawa-malawi",
+    "mz": "betpawa-mozambique",
+    # Verified live 2026-08-21 (v4 categories/list/all returned JSON with
+    # `onlyMeta`, 4 sports) -- absent from the earlier landing-page sweep.
+    "ao": "betpawa-angola",
+    "bw": "betpawa-botswana",
+    "lr": "betpawa-liberia",
+    "ml": "betpawa-mali",
+    "ss": "betpawa-southsudan",
+    "tg": "betpawa-togo",
+    "zw": "betpawa-zimbabwe",
+}
+
+
+class BetPawa(BaseBookmaker):
+    """HTTP client for BetPawa sportsbook API.
+
+    Covers the 15 countries advertised on https://www.betpawa.com/
+    (the country selector landing page). Each country code maps to a
+    canonical sportsbook URL plus an ``x-pawa-brand`` header value;
+    both are wired through ``DOMAINS`` and ``_BRAND_MAP`` in this
+    module. Three URL patterns are in use:
+
+    - ``www.betpawa.<cc>`` — single-letter ccTLD (ng, sl, rw, cm,
+      bj, cd, mw).
+    - ``www.betpawa.<co|com>.<cc>`` — second-level domain (gh, ke, ug,
+      tz, zm, mz).
+    - ``<cc>.betpawa.com`` — country subdomain on the .com root
+      (cg, ls). The ``www.betpawa.<cc>`` form 308-redirects to this;
+      bookieskit binds to the direct form to avoid a redirect on
+      every request.
+
+    Args:
+        country: Country code (one of: ng, gh, ke, ug, tz, zm, rw,
+            cm, sl, bj, cg, cd, ls, mw, mz)
+        timeout: Request timeout in seconds (default: 30)
+        max_retries: Max retry attempts (default: 3)
+        backoff_factor: Exponential backoff base (default: 1.0)
+        max_concurrent: Max parallel requests (default: 50)
+        request_delay: Delay between requests in seconds (default: 0)
+    """
+
+    DOMAINS = {
+        "ng": "https://www.betpawa.ng",
+        "gh": "https://www.betpawa.com.gh",
+        "ke": "https://www.betpawa.co.ke",
+        "ug": "https://www.betpawa.ug",   # .co.ug 308s here (fixed 2026-08-21)
+        "tz": "https://www.betpawa.co.tz",
+        "zm": "https://www.betpawa.co.zm",
+        "rw": "https://www.betpawa.rw",
+        "cm": "https://www.betpawa.cm",
+        "sl": "https://sl.betpawa.com",   # www.betpawa.sl 308s here (fixed 2026-08-21)
+        "bj": "https://www.betpawa.bj",
+        "cg": "https://cg.betpawa.com",
+        "cd": "https://www.betpawa.cd",
+        "ls": "https://ls.betpawa.com",
+        "mw": "https://www.betpawa.mw",
+        "mz": "https://www.betpawa.co.mz",
+        # Added 2026-08-21. Each entry is the form that answers the v4 API
+        # WITHOUT a redirect -- the client does not follow redirects, so a
+        # ccTLD host that 308s to the subdomain is unusable here even though
+        # a redirect-following probe reports it as live. Six of these seven
+        # resolve to `<cc>.betpawa.com`; only Angola serves its ccTLD direct.
+        "ao": "https://www.betpawa.ao",
+        "bw": "https://bw.betpawa.com",   # www.betpawa.co.bw 308s here
+        "lr": "https://lr.betpawa.com",   # no ccTLD site exists
+        "ml": "https://ml.betpawa.com",   # www.betpawa.ml 308s here
+        "ss": "https://ss.betpawa.com",   # no ccTLD site exists
+        "tg": "https://tg.betpawa.com",   # www.betpawa.tg 301s here
+        "zw": "https://zw.betpawa.com",   # www.betpawa.co.zw 308s here
+    }
+    DEFAULT_HEADERS = {
+        # Must be explicit: on the v4 API, `*/*` makes
+        # /events/lists/by-queries answer with application/x-protobuf, which
+        # httpx cannot decode. The categories endpoints return JSON either way.
+        "accept": "application/json",
+        "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+        "devicetype": "web",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",  # noqa: E501
+    }
+    MAX_CONCURRENT = BETPAWA_MAX_CONCURRENT
+    REQUEST_DELAY = BETPAWA_REQUEST_DELAY
+    NAME = "BetPawa"
+    PLATFORM_KEY = "betpawa"
+
+    def _build_headers(self) -> dict[str, str]:
+        headers = super()._build_headers()
+        headers["x-pawa-brand"] = _BRAND_MAP.get(
+            self._country, f"betpawa-{self._country}"
+        )
+        return headers
+
+    async def get_sports(self) -> dict[str, Any]:
+        """Get all available sports/categories.
+
+        Returns:
+            Raw JSON with categories list.
+        """
+        return await self._request("GET", "/api/sportsbook/v4/categories/list/all")
+
+    async def get_countries(self, sport_id: str) -> dict[str, Any]:
+        """Get countries/regions for a sport (with competitions).
+
+        Args:
+            sport_id: Sport category ID (e.g., "2" for Football)
+
+        Returns:
+            Raw JSON with withRegions[].regions[].competitions structure.
+        """
+        return await self._request(
+            "GET",
+            f"/api/sportsbook/v4/categories/list/{sport_id}",
+            params={"includeRegions": "true"},
+        )
+
+    async def get_tournaments(self, sport_id: str) -> dict[str, Any]:
+        """Get tournaments/competitions for a sport.
+
+        Returns the same payload as get_countries — BetPawa's
+        categories/list endpoint returns both regions and competitions
+        in a single response.
+
+        Args:
+            sport_id: Sport category ID (e.g., "2" for Football)
+
+        Returns:
+            Raw JSON with withRegions[].regions[].competitions structure.
+        """
+        return await self._request(
+            "GET",
+            f"/api/sportsbook/v4/categories/list/{sport_id}",
+            params={"includeRegions": "true"},
+        )
+
+    async def get_events(
+        self,
+        tournament_id: str | None = None,
+        sport_id: str = "2",
+        event_type: str = "UPCOMING",
+        skip: int = 0,
+        take: int = 100,
+    ) -> dict[str, Any]:
+        """Get events for a tournament/competition, or all events for a sport.
+
+        Args:
+            tournament_id: Competition ID (e.g., "11965"). If None, returns
+                           all events for the sport (useful for LIVE).
+            sport_id: Sport category ID (default: "2" for Football)
+            event_type: "UPCOMING" or "LIVE" (default: "UPCOMING")
+            skip: Pagination offset (default: 0)
+            take: Page size (default: 100)
+
+        Returns:
+            Raw JSON with responses[].responses[] structure.
+        """
+        query = {
+            "eventType": event_type,
+            "categories": [sport_id],
+            "hasOdds": True,
+        }
+        if tournament_id:
+            query["zones"] = {"competitions": [tournament_id]}
+
+        query_payload = {
+            "queries": [
+                {
+                    "query": query,
+                    "view": {},
+                    "skip": skip,
+                    "take": take,
+                }
+            ]
+        }
+        q_param = quote(json.dumps(query_payload, separators=(",", ":")))
+        return await self._request(
+            "GET", "/api/sportsbook/v4/events/lists/by-queries", params={"q": q_param}
+        )
+
+    async def get_event_detail(self, event_id: str) -> dict[str, Any]:
+        """Get full event details including all markets and odds.
+
+        Args:
+            event_id: BetPawa event ID (e.g., "32299257")
+
+        Returns:
+            Raw JSON with event info, markets, and odds.
+        """
+        return await self._request("GET", f"/api/sportsbook/v4/events/{event_id}")

@@ -1,0 +1,307 @@
+# Markets — registry, builtins, parser
+
+The `bookieskit.markets` package normalizes per-bookmaker market formats into a small set of canonical markets across three sports. Three pieces:
+
+- **Types** (`markets/types.py`) — `MarketMapping`, `OutcomeMapping`, `NormalizedMarket`, `Outcome`.
+- **Registry** (`markets/registry.py`) — `MarketRegistry` holds `MarketMapping` entries, indexed by canonical id, by `(platform, platform_id)` (first-registered wins, typically soccer), and by `(platform, sport, platform_id)` for sport-aware lookups.
+- **Parser** (`markets/parser.py`) — `parse_markets(response, platform, registry=None, *, sport=None, probability=...)` dispatches to a per-platform parser and returns `list[NormalizedMarket]`.
+
+## Sport-aware lookup
+
+Some bookmakers reuse the same `platform_id` across sports. The clearest example is SportPesa: id `52` is **both** football Over/Under and basketball Total Points; id `51` is **both** basketball Handicap and tennis Game Handicap. To resolve correctly, callers pass `sport="basketball"` (or `"tennis"`) to `parse_markets`:
+
+```python
+# Without sport — id 52 resolves to soccer over_under_ft (back-compat).
+parse_markets(response, platform="sportpesa")
+
+# With sport — id 52 resolves to over_under_basketball_ft.
+parse_markets(response, platform="sportpesa", sport="basketball")
+```
+
+The flag is a no-op for bookmakers whose market ids don't overlap across sports (BetPawa, SportyBet, MSport, Betway, Bet9ja, Betika) — pass it always if you're working with non-soccer events; pass it never if you're only doing soccer.
+
+## Built-in mappings
+
+22 markets ship in the default `MarketRegistry` — 15 soccer + 3 basketball + 4 tennis.
+
+### Soccer (full time)
+
+| Canonical id | Name | Parameterized? | BetPawa | SportyBet | Bet9ja | Betway | MSport | SportPesa | Betika | ElephantBet |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `1x2_ft` | 1X2 — Full Time | no | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `over_under_ft` | Over/Under — Full Time | yes (line=goals) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `btts_ft` | Both Teams To Score — Full Time | no | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `double_chance_ft` | Double Chance — Full Time | no | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `1x2_1up_ft` | 1X2 1Up — Full Time | no | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
+| `1x2_2up_ft` | 1X2 2Up — Full Time | no | — | ✅ | ✅ | ✅ | ✅ | — | — | — |
+| `next_goal_ft` | Next Goal — Full Time | yes (line = goal number) | ✅ | ✅ | ✅ | ✅ | ✅ live | ❌ NOT PROBED | ✅ | — |
+| `home_over_under_ft` | Over/Under — Home Team — Full Time | yes (line = goals) | ✅ | ✅ | ✅ combined | ✅ | ✅ | ❌ NOT PROBED | ✅ | ✅ |
+| `away_over_under_ft` | Over/Under — Away Team — Full Time | yes (line = goals) | ✅ | ✅ | ✅ combined | ✅ | ✅ | ❌ NOT PROBED | ✅ | ✅ |
+| `2way_handicap_ft` | 2-Way Asian Handicap — Full Time | yes (signed line=goals) | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ NOT PROBED | — NOT EXPOSED | — |
+| `double_chance_1up_ft` | Double Chance 1Up — Full Time | no | ✅ | ✅ | ✅ | — NOT EXPOSED | — NOT EXPOSED | ❌ NOT PROBED | ❌ #31 | — |
+| `1x2_corners_ft` | Corners 1X2 — Full Time | no | ✅ | ✅ | ✅ | ✅ | ✅ | — NOT OFFERED | ❌ #31 | ✅ |
+| `over_under_corners_ft` | Corners Over/Under — Full Time | yes (line=corners) | ✅ | ✅ | ✅ | ✅ | ✅ | — NOT OFFERED | ❌ #31 | ✅ |
+| `1x2_bookings_ft` | Bookings 1X2 — Full Time | no | ✅ | ✅ | ✅ | ✅ | ✅ | — NOT OFFERED | ❌ #31 | — |
+| `over_under_bookings_ft` | Bookings Over/Under — Full Time | yes (line=cards) | ✅ | ✅ | ✅ | ✅ | ✅ | — NOT OFFERED | ❌ #31 | ✅ |
+
+The 1Up / 2Up markets pay as a 1X2 if your team gets to a 1- or 2-goal lead at any
+point. BetPawa offers 1Up (id `28000810`) but not 2Up. MSport offers both
+(`5000002` / `5000001`) — note it sends market ids as ints, which the parser
+stringifies. SportPesa and Betika expose neither.
+
+`double_chance_1up_ft` applies the same early-payout rule to the double-chance
+selections (1X / X2 / 12). Only BetPawa (id `80000`) and SportyBet (id `60110`)
+offer it, alongside **Bet9ja** (`S_DC1X21`, "DC 1X2 1UP"). Bet9ja's outcome
+suffixes are counter-intuitive — `11` = 1X, **`X1` = X2**, `121` = 12 — and were
+read from its `D.TRANS` catalogue rather than inferred; deriving them by analogy
+would swap two selections. The market is declared in Bet9ja's catalogue but was
+priced on none of the 160 events sampled on 2026-08-21, so the mapping is
+key-verified rather than price-verified.
+
+MSport and Betway were probed live and clearly expose their own 1X2 1Up while
+showing no double-chance variant, so that absence is meaningful. Betika and
+SportPesa are **unknown rather than absent** — Betika's market fetch is truncated
+(#31) and surfaces no 1Up market at all, and SportPesa was never probed.
+
+Corner and booking (card) markets carry the full-time corner/card count rather than
+goals. SportPesa does not offer them; Betika's are blocked behind the truncated
+no-cookie market fetch tracked by issue #31.
+
+Bet9ja sends home and away goal-line O/U as a *single* combined market
+(`S_HAOU`); the parser splits it by outcome suffix (`OH`/`UH` -> home,
+`OA`/`UA` -> away), which is why both canonicals share one `bet9ja_key`.
+
+The `next_goal_ft` market is parameterized by **goal number**: `line=1.0` is "1st goal", `line=2.0` is "2nd goal", etc. Prematch events always carry `line=1.0` only; live events can carry multiple goal numbers under one `NormalizedMarket` (e.g. after the home team scores the 1st goal, the bookmaker exposes both "2nd goal" and "3rd goal" odds and the parser groups them under the same canonical id). Outcomes are `home` / `none` / `away` — `none` means no further goal in regular time.
+
+Per-bookmaker goal-number specifier shapes:
+- **SportyBet / MSport**: `specifier="goalnr=N"`. `_extract_line_from_specifier` recognises `goalnr=` alongside `total=` and `hcp=`.
+- **BetPawa**: `formattedHandicap="N"` per row in the parameterized payload — handled by the existing `_parse_betpawa_parameterized` flow.
+- **Bet9ja**: keys without an `@`-line segment (e.g. `S_1STGOAL_1` / `S_1STGOAL_X` / `S_1STGOAL_2`) — the parser routes these through the simple-market path (`outcomes` populated, `lines=None`), since Bet9ja's "1st goal" market has no per-N variants.
+- **Betway**: line embedded in the `marketId` path segment (`<eventId><typeId>goalnr=N~`). `_build_betway_parameterized` extracts this via `_extract_betway_line_from_market_id` when a single parent entry is present.
+- **Betika**: `special_bet_value="goalnr=N"` per selection.
+- **SportPesa**: not yet probed (no Akamai cookie at probe time).
+
+### Tennis (full match)
+
+| Canonical id | Name | Parameterized? | BetPawa | SportyBet | Bet9ja | Betway | MSport | SportPesa | Betika |
+|---|---|---|---|---|---|---|---|---|---|
+| `moneyline_tennis_match` | Match Winner | no | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `over_under_games_tennis_match` | Over/Under Total Games | yes (line=games) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `over_under_sets_tennis_match` | Over/Under Total Sets | yes (line=sets) | ✅ | ✅ | ✅ | ✅ | — | — | — |
+| `handicap_games_tennis_match` | Game Handicap | yes (signed line=games) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+Working on all 7 of the 8 bookmakers — ElephantBet does not offer tennis markets this increment (core soccer only; see [docs/elephantbet.md](elephantbet.md)). Some bookmakers don't publish every market on every event — those rows are `None` in `BUILTIN_MAPPINGS` and produce no normalised market when the parser hits them. Per-bookmaker conventions:
+
+- **BetPawa**: bespoke numeric ids (4895 = Total Games, 3597899 = Total Sets, 3532590 = Match Handicap Games 2-way, 2043818 = Moneyline). Outcomes "1" / "2".
+- **SportyBet / MSport / Betway / Betika**: SR-standard codes `186` (Winner), `189` (Total Games), `314` (Total Sets), `187` (Game Handicap). MSport doesn't expose `314` (Total Sets).
+- **Bet9ja**: `T_*`-prefixed keys (`T_12`, `T_OUG`, `T_TS`, `T_GH`). The shared parser dispatcher accepts `S_*` (soccer), `B_*` (basketball), `T_*` (tennis), and `LIVES_*` (soccer-live).
+- **SportPesa**: `382` Moneyline, `226` Total Games, `51` Game Handicap. Note `51` ALSO maps to basketball handicap — the sport-aware registry lookup added in 0.12.0 disambiguates via `parse_markets(..., sport="tennis")`.
+- **Betika quirk**: Betika's `match_id` is unique only within `(sport_id, competition_id)`. Bare lookups by `match_id` may resolve to a different match. Always pass `competition_id` to `Betika.get_event_detail()` / `get_event_markets()` (it's on every match row from the listing endpoint). See `examples/compare_betpawa_competition_full.py:build_betika_index` for the pattern.
+
+Tennis ML is 2-way (no draw possible — match has to end). Game Handicap follows the same signed-line convention as basketball handicap: `line=-3.5` means home is favored by 3.5 games; both outcomes ship under that single key.
+
+### Basketball (full time, including overtime)
+
+| Canonical id | Name | Parameterized? | BetPawa | SportyBet | Bet9ja | Betway | MSport | SportPesa | Betika |
+|---|---|---|---|---|---|---|---|---|---|
+| `moneyline_basketball_ft` | Moneyline (incl. OT) | no | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `over_under_basketball_ft` | Over/Under Total Points (incl. OT) | yes (line=points) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `2way_handicap_basketball_ft` | 2-Way Handicap (incl. OT) | yes (signed line=points) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+
+Working across all 7 bookmakers. Each platform is fixture-bound by `tests/test_parser_basketball.py`. The one gap is **Betika basketball handicap**, which is genuinely not offered by Betika (`sub_type_id=223` returned nothing on captured events) — the canonical row carries `betika_id=None` so the parser produces no market for it.
+
+Cross-sport id collisions to be aware of:
+- **Bet9ja** uses a `B_*` market-key prefix for basketball (vs `S_*` for soccer, `T_*` for tennis, `LIVES_*` for soccer-live); the parser preserves the original prefix on registry lookup.
+- **SportPesa** market ids are sport-scoped — id `52` maps to football O/U AND basketball O/U; id `51` is basketball Handicap AND tennis Game Handicap. The sport-aware registry lookup added in 0.12.0 disambiguates: call `parse_markets(..., sport="basketball")` to resolve to the basketball mapping.
+
+**Outcome conventions:**
+- BetPawa, Betika: numeric `"1"` / `"2"` (matches their soccer 1X2 convention minus the X).
+- SportyBet, MSport: word labels `"Home"` / `"Away"`.
+- Betway: team-name outcomes resolved by position sentinel `__POS_2__` for the away side (basketball ML is 2-way, so the soccer `__AWAY__` sentinel at index 2 doesn't apply).
+- Bet9ja: key suffix `_1` / `_2` (ML and handicap) or `_O` / `_U` (O/U).
+- SportPesa: numeric `"1"` / `"2"` (ML and handicap) or `"OV"` / `"UN"` (O/U) — same as soccer.
+
+**Handicap line convention** — handicap uses **signed lines** keyed by the home team's perspective. `line=-5.5` means home is favored by 5.5 points; both outcomes (home and away) live under that single key. The away team's effective `+5.5` line is inferred by negating the key. (The wire-faithful shape — one key per row with both prices — was chosen over the alternative of splitting `{-5.5: [home], +5.5: [away]}`, which would have required parser-side sign-flipping.) The same signed-line convention applies to `2way_handicap_ft` (soccer Asian Handicap) — `line=-1.5` means the home team gives 1.5 goals.
+
+## Types
+
+### `MarketMapping`
+
+Frozen dataclass. Fields:
+- `canonical_id: str` — unique short id (e.g. `"over_under_ft"`).
+- `name: str` — human-readable name.
+- `betpawa_id: str | None`
+- `sportybet_id: str | None`
+- `bet9ja_key: str | None` — the key prefix in Bet9ja's flat odds dict (e.g. `"S_OU"`).
+- `betway_id: str | None` — the literal market name as Betway returns it (e.g. `"[Total Goals]"`, `"1X2 (1Up)"`).
+- `msport_id: str | None`
+- `sportpesa_id: str | None`
+- `betika_id: str | None` — Betika's `sub_type_id` for this market (e.g. `"18"` for soccer O/U, `"189"` for tennis Total Games).
+- `elephantbet_id: str | None` — ElephantBet's market id (e.g. `"3"` for soccer 1X2, `"29"` for O/U — a single id covers every O/U line, distinguished by the outcome's `sbv` field).
+- `sport: str` — sport tag for collision-safe lookups. Defaults to `"soccer"`. Set to `"basketball"` / `"tennis"` for non-soccer mappings so the sport-aware registry can disambiguate ids that overlap across sports on the same platform.
+- `outcomes: dict[str, OutcomeMapping]` — keyed by canonical outcome name (`"home"`, `"over"`, etc.).
+- `parameterized: bool` — `True` for markets with line variants (Over/Under, handicaps).
+
+### `OutcomeMapping`
+
+Frozen dataclass. One per canonical outcome:
+- `canonical_name: str` — e.g. `"home"`, `"draw"`, `"over"`.
+- `betpawa: str` — the platform's outcome string (e.g. `"1"`, `"1X"`).
+- `sportybet: str` — e.g. `"Home"`, `"Home or Draw"`.
+- `bet9ja: str` — the suffix in the flat odds dict (e.g. `"O"` for over, `"X1"` for the 1X2 1Up draw).
+- `betway: str` — either the literal name (`"Over"`) or a position sentinel (see below).
+- `msport: str` — e.g. `"Home"`, `"1 X"` for DC.
+- `sportpesa: str` — e.g. `"1"`, `"Over"`, `"1X"`. SportPesa's selection names align with the SportRadar feed it consumes.
+- `betika: str` — e.g. `"1"`, `"Over"`, `"1/X"`, `"Yes"`. Matched case-insensitively. For parameterized markets (Over/Under), Betika embeds the line in the display label as `"OVER 2.5"`; the parser strips the trailing token before resolving.
+- `elephantbet: str` — e.g. `"1"`, `"X"`, `"2"` (1X2), `"Sim"`/`"Não"` (BTTS — Portuguese for Yes/No). Over/Under outcomes are distinguished by the market's `sbv` (line) field rather than this outcome label.
+
+### `NormalizedMarket`
+
+The output of `parse_markets`. Has `canonical_id`, `name`, `outcomes` (a flat list for non-parameterized markets), and `lines` (a `dict[float, list[Outcome]]` for parameterized markets like Over/Under). Exactly one of `outcomes` / `lines` is populated per market.
+
+### `Outcome`
+
+A normalized outcome inside a `NormalizedMarket`. Has `canonical_name`, `odds: float`, `platform_name` (the original string from the bookmaker, useful for debugging).
+
+### Position sentinels (Betway)
+
+Betway returns the 1X2-shaped markets (1X2, DC, 1X2 1Up, 1X2 2Up) with team names as outcomes (`"Aston Villa"`, `"Draw"`, `"Nottingham Forest"`) — not standardized labels. The parser resolves them by index using these sentinels in the `betway` field of `OutcomeMapping`:
+
+| Sentinel | Index | Meaning |
+|---|---|---|
+| `__HOME__` | 0 | Home team (used by 1X2-shaped markets). |
+| `__AWAY__` | 2 | Away team (used by 1X2-shaped markets). |
+| `__POS_1__` | 0 | First outcome positionally. |
+| `__POS_2__` | 1 | Second outcome positionally. |
+| `__POS_3__` | 2 | Third outcome positionally. |
+
+Use `__HOME__` / `__AWAY__` on 1X2 (clearest intent) and `__POS_N__` for Double Chance where the meaning is purely positional (Betway returns DC as 1X / 12 / X2 in that order).
+
+## Parser dispatcher
+
+`parse_markets(response, platform, registry=None)` looks up `platform` in the dispatcher dict and calls the right `_parse_<platform>` function. Currently registered: `"betpawa"`, `"sportybet"`, `"bet9ja"`, `"betway"`, `"msport"`, `"sportpesa"`, `"betika"`, `"elephantbet"`. Returns `[]` if `platform` is unknown.
+
+The Bet9ja parser handles BOTH the prematch `S_*` keys AND the live `LIVES_*` keys. It also unwraps the `{"v": <float>}` odds shape used in live responses (vs bare strings prematch).
+
+## Betway team-name placeholders
+
+Some Betway markets carry the literal team name in the market-name field — e.g. `"Aston Villa Total"` / `"Brighton Total"` for `home_over_under_ft` / `away_over_under_ft`. The canonical mappings register the placeholder form `"[Home Team] Total"` / `"[Away Team] Total"` (literal `[Home Team]` / `[Away Team]` tokens).
+
+At parse-time, `_parse_betway` wraps the supplied registry in `_TeamScopedBetwayRegistry` using `sportEvent.homeTeam` / `awayTeam` from the response. The wrapper substitutes the literal placeholders against the actual team names on every miss; non-team-named markets take the fast direct-lookup path unchanged. Custom mappings can use the same `[Home Team]` / `[Away Team]` tokens in `betway_id` to participate in this mechanism — no code changes needed.
+
+Note: the placeholder string is whatever literal text Betway ships AROUND the team name. The `next_goal_ft` market on Betway is named `"1st Goal"` (no team name) and uses the direct-lookup path. The `home_over_under_ft` / `away_over_under_ft` markets are named `"<TeamName> Total"` (note: NO "Goals" suffix — early designs assumed `"<TeamName> Total Goals"` but the probe showed the actual shape).
+
+## Custom mappings
+
+Add a market to the default registry at runtime:
+
+```python
+from bookieskit.markets import MarketRegistry, OutcomeMapping
+
+registry = MarketRegistry()  # ships with the 6 builtins
+registry.add(
+    canonical_id="draw_no_bet_ft",
+    name="Draw No Bet — Full Time",
+    betpawa_id="4703",
+    sportybet_id="11",
+    bet9ja_key="S_DNB",
+    betway_id="Draw No Bet",
+    msport_id="11",
+    outcomes={
+        "home": OutcomeMapping(
+            canonical_name="home",
+            betpawa="1", sportybet="Home", bet9ja="1",
+            betway="__HOME__", msport="Home",
+        ),
+        "away": OutcomeMapping(
+            canonical_name="away",
+            betpawa="2", sportybet="Away", bet9ja="2",
+            betway="__AWAY__", msport="Away",
+        ),
+    },
+)
+```
+
+Pass the registry into `parse_markets(raw, platform=..., registry=registry)` or `client.get_markets(event_id, registry=registry)`.
+
+## Adding a new platform
+
+To wire a new bookmaker into the parser:
+1. Add a `<platform>_id` field to `MarketMapping` and a `<platform>` field to `OutcomeMapping` in `markets/types.py`.
+2. Add a `_by_<platform>` index to `MarketRegistry` in `markets/registry.py` and update `_register` and `get_by_platform_id`.
+3. Write `_parse_<platform>(response, registry)` in `markets/parser.py`.
+4. Add a `"<platform>": _parse_<platform>` entry to the dispatcher in `parse_markets`.
+5. Update the 6 builtins in `markets/builtin_mappings.py` (or leave entries unmapped via `None` if the platform doesn't expose those markets).
+
+## Probabilities
+
+Each `Outcome` carries `odds` (decimal odds) and optionally
+`true_probability` / `void_probability` — the bookmaker's pre-margin fair
+estimate and the chance the bet is voided. Off by default; opt in via the
+`probability` keyword on `parse_markets`:
+
+```python
+from bookieskit.markets import parse_markets
+
+# Default: probabilities not extracted
+markets = parse_markets(detail, platform="sportybet")
+
+# Opt in to fair-probability extraction
+markets = parse_markets(detail, platform="sportybet", probability="true")
+
+# Opt in to fair + void
+markets = parse_markets(detail, platform="sportybet", probability="with_void")
+
+for m in markets:
+    for o in m.outcomes:
+        print(o.canonical_name, o.odds, o.true_probability, o.void_probability)
+```
+
+`true_probability` is the bookmaker's fair (pre-margin) estimate, **not**
+`1 / odds`. Across mutually exclusive outcomes of one market, fair
+probabilities sum to ≈1; implied probabilities (`1/odds`) sum to >1
+because of the bookmaker's margin.
+
+### Per-platform support
+
+| Platform | `true_probability` | `void_probability` | Notes |
+|---|---|---|---|
+| SportyBet | yes | yes | Plain decimal-string fields |
+| MSport | yes | n/a | Only `probability`; `voidProbability` is not in the API |
+| BetPawa | yes | yes | Obfuscated client-side; bookieskit decodes transparently |
+| Betway | n/a | n/a | Verified absent from `get_event_markets` (no `probability` / `prob` / `impliedOdds` / `margin` / `voidProbability` keys anywhere in their 400 KB markets payload) |
+| Bet9ja | n/a | n/a | Not in `D.O` (live) nor in their prematch event-detail response |
+| SportPesa | fixture-resolved | fixture-resolved | Per-selection `probability` / `void_probability` field presence not yet confirmed against a captured payload; the parser populates whichever fields the response carries and leaves the rest `None` |
+| Betika | n/a | n/a | No probability / void-probability fields on selections; both stay `None` |
+
+For Betway, Bet9ja and Betika, both fields are always `None` regardless of the
+`probability` mode — `parse_markets` accepts the keyword silently. For
+SportPesa, the same silent-acceptance contract applies; fields that the
+captured payload doesn't carry stay `None`.
+
+### Modes
+
+| `probability` value | Behaviour |
+|---|---|
+| `"off"` (default) | Both fields `None` for every outcome. Zero parsing cost. |
+| `"true"` | `true_probability` populated where supported; `void_probability` always `None`. |
+| `"with_void"` | Both fields populated where supported. |
+
+Invalid values (anything outside the literal) are silently treated as
+`"off"`.
+
+### BetPawa deobfuscation
+
+BetPawa hides per-outcome probability behind a base64-encoded JSON
+payload `{"win": <int>, "refund": <int>, "key": <int>}`; each value is
+recovered by 3-way 64-bit XOR with a global constant and the per-bet key,
+then reinterpreted as IEEE 754 float64 (big-endian). The library handles
+this transparently — callers only see `true_probability` and
+`void_probability` as floats. Direct access to the decoder is available
+via `bookieskit.bookmakers._betpawa_obfuscation.decode_betpawa_probability`
+for ad-hoc analysis (private import, not re-exported from the top-level package).
+
+## See also
+
+- [docs/matching.md](matching.md) — pairing events across platforms by SR id.
+- [docs/examples.md](examples.md) — example scripts that use the registry end-to-end.
