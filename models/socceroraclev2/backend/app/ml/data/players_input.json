@@ -1,0 +1,344 @@
+[
+    {
+        "player_name": "Mohamed Salah",
+        "team_name": "Liverpool",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Erling Haaland",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Harry Kane",
+        "team_name": "Bayern Munich",
+        "league_name": "Bundesliga",
+        "country": "Germany"
+    },
+    {
+        "player_name": "Lamine Yamal",
+        "team_name": "Barcelona",
+        "league_name": "La Liga",
+        "country": "Spain"
+    },
+    {
+        "player_name": "Phil Foden",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Bukayo Saka",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Gabriel Jesus",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Darwin Nunez",
+        "team_name": "Liverpool",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Alexander Isak",
+        "team_name": "Newcastle",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Ollie Watkins",
+        "team_name": "Aston Villa",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Ivan Toney",
+        "team_name": "Brentford",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Nicolas Jackson",
+        "team_name": "Chelsea",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Anthony Gordon",
+        "team_name": "Newcastle",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Jarrod Bowen",
+        "team_name": "West Ham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Mohamed Kudus",
+        "team_name": "West Ham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Declan Rice",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Kevin De Bruyne",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Bruno Fernandes",
+        "team_name": "Manchester United",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Martin Odegaard",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Rodri",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Alexis Mac Allister",
+        "team_name": "Liverpool",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "James Maddison",
+        "team_name": "Tottenham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Bernardo Silva",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Moises Caicedo",
+        "team_name": "Chelsea",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Dominik Szoboszlai",
+        "team_name": "Liverpool",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Yves Bissouma",
+        "team_name": "Tottenham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Casemiro",
+        "team_name": "Manchester United",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Douglas Luiz",
+        "team_name": "Aston Villa",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Amadou Onana",
+        "team_name": "Everton",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Conor Gallagher",
+        "team_name": "Chelsea",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Virgil van Dijk",
+        "team_name": "Liverpool",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "William Saliba",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Gabriel Magalhaes",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Ruben Dias",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "John Stones",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Kyle Walker",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Ben White",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Trent Alexander-Arnold",
+        "team_name": "Liverpool",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Andrew Robertson",
+        "team_name": "Liverpool",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Josko Gvardiol",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Lisandro Martinez",
+        "team_name": "Manchester United",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Raphael Varane",
+        "team_name": "Manchester United",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Cristian Romero",
+        "team_name": "Tottenham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Micky van de Ven",
+        "team_name": "Tottenham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Pedro Porro",
+        "team_name": "Tottenham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Alisson",
+        "team_name": "Liverpool",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Ederson",
+        "team_name": "Manchester City",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Aaron Ramsdale",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "David Raya",
+        "team_name": "Arsenal",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Andre Onana",
+        "team_name": "Manchester United",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Nick Pope",
+        "team_name": "Newcastle",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Jordan Pickford",
+        "team_name": "Everton",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Emiliano Martinez",
+        "team_name": "Aston Villa",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Robert Sanchez",
+        "team_name": "Chelsea",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Bernd Leno",
+        "team_name": "Fulham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Alphonse Areola",
+        "team_name": "West Ham",
+        "league_name": "Premier League",
+        "country": "England"
+    },
+    {
+        "player_name": "Guglielmo Vicario",
+        "team_name": "Tottenham",
+        "league_name": "Premier League",
+        "country": "England"
+    }
+]
