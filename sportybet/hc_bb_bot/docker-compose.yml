@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  basketball-bot:
+    build: .
+    container_name: basketball-betting-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - API_BASKETBALL_KEY=${API_BASKETBALL_KEY}
+      - RAPIDAPI_KEY=${RAPIDAPI_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
