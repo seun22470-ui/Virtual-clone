@@ -1,0 +1,12 @@
+:80 {
+    reverse_proxy localhost:5000
+
+    # Enable response compression for faster page load
+    encode gzip zstd
+
+    # Output HTTP access logs to stdout
+    log {
+        output stdout
+        format console
+    }
+}

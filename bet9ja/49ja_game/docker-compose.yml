@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+      network: host
+    container_name: 49ja_game
+    restart: always
+    ports:
+      - "5000:5000"
+    shm_size: "1gb" # Crucial for preventing Firefox tab crashes
+    volumes:
+      - ./game_data.db:/app/game_data.db:z
+      - ./app.log:/app/app.log:z
+      - ./server.log:/app/server.log:z
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
